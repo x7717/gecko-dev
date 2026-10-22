@@ -1,0 +1,49 @@
+name: WebRender Rust CI
+
+# Checks that the standalone WebRender Rust workspace (gfx/wr) still builds
+# and its webrender crate unit tests pass. Runs on demand and weekly.
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Monday at 05:00 UTC
+    - cron: '0 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  webrender-cargo:
+    name: cargo check + test (gfx/wr)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout (depth 1)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Verify gfx/wr workspace exists
+        run: |
+          test -f gfx/wr/Cargo.toml || { echo "gfx/wr workspace not found"; ls gfx | head; exit 1; }
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gfx/wr
+
+      - name: cargo check --workspace
+        working-directory: gfx/wr
+        continue-on-error: false
+        run: |
+          test -f Cargo.toml || { echo "gfx/wr workspace not found"; ls ../ | head; exit 1; }
+          cargo check --workspace
+
+      - name: cargo test -p webrender --lib
+        working-directory: gfx/wr
+        continue-on-error: false
+        run: |
+          test -f Cargo.toml || { echo "gfx/wr workspace not found"; ls ../ | head; exit 1; }
+          cargo test -p webrender --lib
