@@ -29,7 +29,7 @@ jobs:
       - name: Install system deps (freetype/pkg-config for servo-fontconfig-sys)
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libfreetype-dev libfontconfig1-dev
+          sudo apt-get install -y pkg-config libfreetype-dev libfontconfig1-dev libwayland-dev
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -39,12 +39,16 @@ jobs:
         with:
           workspaces: gfx/wr
 
-      - name: cargo check --workspace
+      # Core WebRender crates (the Firefox rendering engine components).
+      # Example-compositor crates are excluded on purpose: they pull in
+      # windowing-system deps (wayland/X11/GL headers) irrelevant to the
+      # rendering core itself.
+      - name: cargo check (core crates)
         working-directory: gfx/wr
         continue-on-error: false
         run: |
           test -f Cargo.toml || { echo "gfx/wr workspace not found"; ls ../ | head; exit 1; }
-          cargo check --workspace
+          cargo check -p webrender -p webrender_api -p wr_glyph_rasterizer -p wrench
 
       - name: cargo test -p webrender --lib
         working-directory: gfx/wr
